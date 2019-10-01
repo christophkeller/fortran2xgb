@@ -8,7 +8,9 @@ A python version of XGBoost is required (https://github.com/dmlc/xgboost/tree/ma
 
 # example
 1. Create dummy xgbooster model and save to file (bst.bin):
+
  python xgb_train.py
 
 2. Compile and execute Fortran code:
+
  make
