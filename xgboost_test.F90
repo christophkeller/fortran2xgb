@@ -21,24 +21,25 @@ program xgboost_test
  ncol = 5
  ! Create XGDMatrix - this seems required in order to create a booster object below
  rc = XGDMatrixCreateFromMat_f(arr, nrow, ncol, -999.0, dmtrx)
- write(*,*) 'Return code: ',rc
+ write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! now create XGBooster object. Content will be loaded into it next
  dmtrx_len = 0
  rc = XGBoosterCreate_f(dmtrx,dmtrx_len,xgb)
- write(*,*) 'Return code: ',rc
+ write(*,*) __FILE__,__LINE__,'Return code: ',rc
  write(*,*) 'dmtrx_len: ',dmtrx_len
  write(*,*) c_associated(xgb)
  ! load XGBooster model from binary file
+ !fname = 'bst.bin'//c_null_char
  fname = 'bst.bin'
- rc = XGBoosterLoadModel_c(xgb,TRIM(fname))
- write(*,*) 'Return code: ',rc
+ rc = XGBoosterLoadModel_f(xgb,fname)
+ write(*,*) __FILE__,__LINE__,'Return code: ',rc
  write(*,*) c_associated(xgb)
  ! Save model to txt file
-! rc = XGBoosterSaveModel_f(xgb,'test.txt')
-! write(*,*) 'Return code: ',rc
+ rc = XGBoosterSaveModel_f(xgb,'test.txt')
+ write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! Release model
-! rc = XGBoosterFree_f(xgb)
-! write(*,*) 'Model freed, return code: ',rc
+ rc = XGBoosterFree_f(xgb)
+ write(*,*) 'Model freed, return code: ',rc
  write(*,*) 'All done'
 
 end program

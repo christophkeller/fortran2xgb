@@ -15,7 +15,7 @@ end interface
 interface
   integer(c_int) function XGBoosterSaveModel_c(handle, fname) bind(C, name="XGBoosterSaveModel")
    use iso_c_binding, only: c_int, c_ptr, c_char
-   type(c_ptr) :: handle ! BoosterHandle
+   type(c_ptr), value :: handle ! BoosterHandle
    character(len=1, kind=c_char), dimension(*) :: fname
   end function
 end interface
@@ -56,11 +56,9 @@ interface
 end interface
 
 interface
-   integer(c_int) function XGBoosterFree_f(handle) &
-         bind(c, name="XGBoosterFree")
+   integer(c_int) function XGBoosterFree_f(handle) bind(c, name="XGBoosterFree")
       use iso_c_binding, only: c_int, c_ptr
-
-      type(c_ptr) :: handle ! BoosterHandle
+      type(c_ptr), value :: handle ! BoosterHandle
    end function
 end interface
  
@@ -81,8 +79,8 @@ contains
    character(len=*) :: fname
    character(len=:),allocatable :: cname
    cname = trim(fname)//c_null_char
-   write(*,*) trim(cname)
-   write(*,*) c_associated(handle)
+   !write(*,*) trim(cname)
+   !write(*,*) c_associated(handle)
    rc = XGBoosterSaveModel_c(handle, cname)
   end function
 
