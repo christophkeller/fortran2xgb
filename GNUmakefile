@@ -43,7 +43,7 @@ FOPTS = -g -fbacktrace
 	$(CC) $(VOPTS) $(COPTS) $(DOPTS) -c $< -I$(INCDIR)
 
 clean:
-	rm -f *.o *.mod core.*
+	rm -f *.o *.mod core.* *.exe
 
 veryclean: clean
 	rm -f *.exe input.nml logfile.* mpp_clock.out.*

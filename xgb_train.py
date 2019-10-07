@@ -11,10 +11,10 @@ def main(args):
     The booster model is saved to disk and then reloaded to do a quick check
     that the loaded model is identical to the originally created one.
     '''
-    nrow = 5
-    ncol = 500
-    x_np = np.random.rand(ncol,nrow)
-    y_np = np.random.rand(ncol,1)
+    nrow = 500
+    ncol = 5
+    x_np = np.random.rand(nrow,ncol)
+    y_np = np.random.rand(nrow,1)
     train = xgb.DMatrix(x_np,y_np)
     param = {'booster' : 'gbtree'}
     bst = xgb.train(param,train)
@@ -39,10 +39,27 @@ def main(args):
     print("R2 (should be 1.00) = "+'{0:.2f}'.format(r2))
     print("NRMSE (should be 0.00) = "+'{0:.2f}'.format(nrmse))
     print("NMB (should be 0.00) = "+'{0:.2f}'.format(nmb))
-    
+    # prediction with all zeros and all ones:
+    arr = np.zeros((1,5))
+    p = bst.predict(xgb.DMatrix(arr))
+    print("Prediction with all zeros:")
+    print(p)
+    arr[:,:] = 1.0
+    mtrx = xgb.DMatrix(arr)
+    p = bst.predict(mtrx)
+    print("Prediction with all ones:")
+    print(p)
+    mtrx.save_binary('mtrx_ones_from_py.bin')
+    print('matrix with ones saved to mtrx_from_py.bin')
+    tmp = xgb.DMatrix('mtrx_ones_from_py.bin')
+    p = bst.predict(tmp)
+    print("Prediction with ones matrix reloaded:")
+    print(p)
+    return   
+ 
 def parse_args():
     p = argparse.ArgumentParser(description='Undef certain variables')
-    p.add_argument('-f','--bstfile',type=str,help='xgb binary file',default='bst.bin')
+    p.add_argument('-f','--bstfile',type=str,help='xgb binary file',default='bst_from_py.bin')
     return p.parse_args()
 
 if __name__ == '__main__':
