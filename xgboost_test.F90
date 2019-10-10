@@ -1,104 +1,125 @@
 program xgboost_test
-! Simple test interface that calls XGBoost from Fortran invoking the C bindings defined in fortran_api.F90.
-! This uses the Python wrapper as a guide (https://github.com/dmlc/xgboost/blob/master/python-package/xgboost/core.py)
- 
+! Simple interface showing an example on how to call XGBoost from Fortran 
+! by invoking the C bindings defined in fortran_api.F90.
+! 
+! As an example, this reads a pre-saved booster object from file 'bst.bin' 
+! and then makes a prediction using a vector of all ones as input. The booster
+! object is assumed to take 5 input arguments and produce one target value. 
+! The booster model can be trained in python and then written to binary file, 
+! as e.g. shown in xgb_train.py. 
+!
+! History:
+! 2019-10-09 - christoph.a.keller@nasa.gov - Initial version
+! ----------------------------------------------------------------------------
  use iso_c_binding
- use fortran_api
+ use xgb_fortran_api
  implicit none
 
- integer :: rc
- character(len=255) :: fname
- type(c_ptr)        :: bst, dmtrx, dmtrx2, dmtrx3, dmtrx4
- integer(c_int64_t) :: dmtrx_len 
- integer(c_int64_t) :: nrow, ncol
- real(c_float)      :: miss
- integer(c_int64_t) :: pred_len 
- integer(c_int64_t) :: option_mask 
- integer(c_int64_t) :: ntree_limit
- integer(c_int64_t) :: dmtrx_nrow 
- integer(c_int64_t) :: dmtrx_ncol 
- integer(c_int)     :: silent
- real*4             :: pred1(1), pred2(1), pred3(1)
- real*4             :: arr(5)
+!--- Local variables
+ integer                    :: rc
+ integer(c_int64_t)         :: nrow, ncol
+ ! for booster object 
+ character(len=255)         :: fname_bst
+ integer(c_int64_t)         :: dmtrx_len
+ type(c_ptr)                :: bst
+ ! for XGDMatrix object
+ type(c_ptr)                :: dmtrx 
+ integer(c_int64_t)         :: dm_nrow, dm_ncol
+ integer(c_int)             :: silent
+ real(c_float), allocatable :: carr(:)
+ character(len=255)         :: fname
+ ! for prediction
+ integer(c_int)             :: option_mask, ntree_limit
+ type(c_ptr)                :: cpred
+ integer(c_int64_t)         :: pred_len 
+ real(c_float), pointer     :: pred(:)
 
+!--- Parameter
+ ! missing value 
+ real(c_float), parameter :: miss = -999.0
+ ! debug flag
+ logical, parameter       :: debug    = .false.
+ logical, parameter       :: fulltest = .true.
+
+!--- Settings
+ ! Dimension of input array. We assume it's 1x5 (1 prediction, 5 input variables)
+ fname_bst = 'xgbin/bst_from_py.bin'
+ nrow      = 1
+ ncol      = 5
+ ! Array to hold input values
+ allocate(carr(ncol))
+ carr(:) = 0.0
+ ! Settings for prediction 
+ option_mask = 0
+ ntree_limit = 0
+ ! Silent flag for reading/writing
+ silent = 0
+
+!--- Starts here
  write(*,*) 'Starting XGBoost program'
- nrow = 1
- ncol = 5
- arr(:) = 1.0
- miss = 1.0
- ! Create XGDMatrix - this seems required in order to create a booster object below
- rc = XGDMatrixCreateFromMat_f(arr, nrow, ncol, miss, dmtrx)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
+
+!--- Load booster object
+ ! Create (dummy) XGDMatrix - this is required in order to create the booster object below
+ rc = XGDMatrixCreateFromMat_f(carr, nrow, ncol, miss, dmtrx)
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! Check XGDMatrix dimensions
  ! number of rows/cols in dmtrx
- rc = XGDMatrixNumRow_f(dmtrx, dmtrx_nrow) 
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) 'Numbers of rows: ',dmtrx_nrow
+ rc = XGDMatrixNumRow_f(dmtrx, dm_nrow) 
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! number of rows/cols in dmtrx
- rc = XGDMatrixNumCol_f(dmtrx, dmtrx_ncol) 
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) 'Numbers of cols: ',dmtrx_ncol
+ rc = XGDMatrixNumCol_f(dmtrx, dm_ncol) 
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ write(*,*) 'Numbers of rows, cols of DMatrix object: ',dm_nrow,dm_ncol
 
  ! now create XGBooster object. Content will be loaded into it next
  dmtrx_len = 0
  rc = XGBoosterCreate_f(dmtrx,dmtrx_len,bst)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) 'dmtrx_len: ',dmtrx_len
- write(*,*) c_associated(bst)
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! load XGBooster model from binary file
- fname = 'bst_from_py.bin'
- rc = XGBoosterLoadModel_f(bst,fname)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) c_associated(bst)
- ! Save model to txt file
- rc = XGBoosterSaveModel_f(bst,'bst_from_f90.bin')
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ write(*,*) 'Reading '//trim(fname_bst)
+ rc = XGBoosterLoadModel_f(bst,fname_bst)
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ ! To save model to binary file
+ if ( fulltest ) then
+    rc = XGBoosterSaveModel_f(bst,'xgbin/bst_from_f90.bin')
+    if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ endif
 
- ! Prediction with all zeros 
- option_mask = 0
- ntree_limit = 0
- arr(:) = 0.0
- miss = 0.0
- rc = XGDMatrixCreateFromMat_f(arr, nrow, ncol, miss, dmtrx2)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
+!--- Make prediction with all ones 
+ ! Create XGDMatrix with all ones
+ carr(:) = 1.0
+ rc = XGDMatrixCreateFromMat_f(carr, nrow, ncol, miss, dmtrx)
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ ! Make prediction. The result will be stored in c pointer cpred 
+ rc = XGBoosterPredict_f(bst,dmtrx,option_mask,ntree_limit,pred_len,cpred)
+ if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ ! Link to fortran pointer pred 
+ call c_f_pointer(cpred, pred, [pred_len])
+ write(*,*) 'Prediction with all ones: ',pred
 
- ! save to binary - loading this file from python gives the expected result
- rc = XGDMatrixSaveBinary_f(dmtrx3, 'mtrx_zeros_from_f90.bin', silent)
- rc = XGBoosterPredict_f(bst,dmtrx2,option_mask,ntree_limit,pred_len,pred1)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) 'Prediction with all zeros: ',pred_len, pred1(1)
+!--- Additional example code for DMatrix 
+ if ( fulltest ) then
+    ! 1. Save XGDMatrix defined above to binary file. This can then
+    ! be reloaded, e.g. using XGDMatrixCreateFromFile_f or from
+    ! Python, e.g.: dmtrx = xgboost.DMatrix('mtrx_ones_from_f90.bin')
+    fname = 'xgbin/mtrx_ones_from_f90.bin'
+    rc = XGDMatrixSaveBinary_f(dmtrx, fname, silent)
+    if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+    ! 2. Load XGDMatrix from binary file 
+    rc = XGDMatrixCreateFromFile_f(fname, silent, dmtrx)
+    if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+    ! 3. Make prediction with this matrix - should give same result as above 
+    rc = XGBoosterPredict_f(bst,dmtrx,option_mask,ntree_limit,pred_len,cpred)
+    if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+    call c_f_pointer(cpred, pred, [pred_len])
+    write(*,*) 'Prediction with data from file: ',pred
+ endif
 
- ! Prediction with all ones 
- arr(:) = 1.0
- miss = 1.0
- rc = XGDMatrixCreateFromMat_f(arr, nrow, ncol, miss, dmtrx3)
- ! save to binary - loading this file from python gives the expected result
- fname = 'mtrx_ones_from_f90.bin'
- rc = XGDMatrixSaveBinary_f(dmtrx3, fname, silent)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
-
- rc = XGBoosterPredict_f(bst,dmtrx3,option_mask,ntree_limit,pred_len,pred2)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) 'Prediction with all ones: ',pred_len, pred2(1)
-
- ! Try reading from binary file
- silent = 0
- write(*,*) 'Reading matrix from file'
- rc = XGDMatrixCreateFromFile_f('mtrx_ones_from_py.bin',silent,dmtrx4)
- rc = XGDMatrixSaveBinary_f(dmtrx4, 'mtrx_ones_from_py_to_f90.bin', silent)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- ! number of rows/cols in dmtrx
- rc = XGDMatrixNumRow_f(dmtrx4, dmtrx_nrow) 
- rc = XGDMatrixNumCol_f(dmtrx4, dmtrx_ncol) 
- write(*,*) 'Numbers of rows, cols: ',dmtrx_nrow, dmtrx_ncol
-
- rc = XGBoosterPredict_f(bst,dmtrx4,option_mask,ntree_limit,pred_len,pred3)
- write(*,*) __FILE__,__LINE__,'Return code: ',rc
- write(*,*) 'Prediction with matrix read from file: ',pred_len, pred3(1)
-
- ! Release model
+!--- Cleanup
  rc = XGBoosterFree_f(bst)
- write(*,*) 'Model freed, return code: ',rc
+ if(debug) write(*,*) __FILE__,__LINE__,'Model freed, return code: ',rc
+ if (allocated (carr) ) deallocate(carr)
+ if (associated(pred) ) nullify(pred)
  write(*,*) 'All done'
 
 end program

@@ -16,12 +16,12 @@ all: runtest
 runtest: test.exe
 	env LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(XGBOOST_LIBDIR) ./test.exe
 
-test.exe: xgboost_test.o fortran_api.o
+test.exe: xgboost_test.o xgb_fortran_api.o
 	$(FC) $(FOPTS) $^ -o $@ -L$(XGBOOST_LIBDIR) -lxgboost
 
-xgboost_test.o: xgboost_test.F90 fortran_api.o
+xgboost_test.o: xgboost_test.F90 xgb_fortran_api.o
 
-fortran_api.o: fortran_api.F90
+xgb_fortran_api.o: xgb_fortran_api.F90
 
 #FOPTS = -g -traceback
 FOPTS = -g -fbacktrace

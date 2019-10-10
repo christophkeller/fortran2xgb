@@ -40,7 +40,7 @@ def main(args):
     print("NRMSE (should be 0.00) = "+'{0:.2f}'.format(nrmse))
     print("NMB (should be 0.00) = "+'{0:.2f}'.format(nmb))
     # prediction with all zeros and all ones:
-    arr = np.zeros((1,5))
+    arr = np.zeros((1,ncol))
     p = bst.predict(xgb.DMatrix(arr))
     print("Prediction with all zeros:")
     print(p)
@@ -49,17 +49,18 @@ def main(args):
     p = bst.predict(mtrx)
     print("Prediction with all ones:")
     print(p)
-    mtrx.save_binary('mtrx_ones_from_py.bin')
-    print('matrix with ones saved to mtrx_from_py.bin')
-    tmp = xgb.DMatrix('mtrx_ones_from_py.bin')
-    p = bst.predict(tmp)
-    print("Prediction with ones matrix reloaded:")
+    fname = 'xgbin/mtrx_ones_from_py.bin'
+    mtrx.save_binary(fname)
+    print('matrix with ones saved to '+fname)
+    m_ones = xgb.DMatrix(fname)
+    p = bst.predict(m_ones)
+    print("Prediction with ones matrix reloaded (should be same as above):")
     print(p)
     return   
  
 def parse_args():
     p = argparse.ArgumentParser(description='Undef certain variables')
-    p.add_argument('-f','--bstfile',type=str,help='xgb binary file',default='bst_from_py.bin')
+    p.add_argument('-f','--bstfile',type=str,help='xgb binary file',default='xgbin/bst_from_py.bin')
     return p.parse_args()
 
 if __name__ == '__main__':
