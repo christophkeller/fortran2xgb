@@ -29,16 +29,22 @@ program xgboost_test
  real(c_float), allocatable :: carr(:)
  character(len=255)         :: fname
  ! for prediction
- integer(c_int)             :: option_mask, ntree_limit
+ integer(c_int)             :: option_mask, ntree_limit, training
  type(c_ptr)                :: cpred
  integer(c_int64_t)         :: pred_len 
  real(c_float), pointer     :: pred(:)
+ integer, pointer           :: targ(:)
+
+! testing new interface
+ integer, pointer            :: oshape(:)
+ type(c_ptr)                 :: out_shape
+ character(len=255)          :: json_config
 
 !--- Parameter
  ! missing value 
  real(c_float), parameter :: miss = -999.0
  ! debug flag
- logical, parameter       :: debug    = .false.
+ logical, parameter       :: debug    = .true.
  logical, parameter       :: fulltest = .true.
 
 !--- Settings
@@ -52,6 +58,7 @@ program xgboost_test
  ! Settings for prediction 
  option_mask = 0
  ntree_limit = 0
+ training    = 0
  ! Silent flag for reading/writing
  silent = 0
 
@@ -86,16 +93,30 @@ program xgboost_test
  endif
 
 !--- Make prediction with all ones 
+
+ allocate(targ(nrow))
+ cpred = c_loc(targ)
+
  ! Create XGDMatrix with all ones
  carr(:) = 1.0
  rc = XGDMatrixCreateFromMat_f(carr, nrow, ncol, miss, dmtrx)
  if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! Make prediction. The result will be stored in c pointer cpred 
- rc = XGBoosterPredict_f(bst,dmtrx,option_mask,ntree_limit,pred_len,cpred)
+ rc = XGBoosterPredict_f(bst,dmtrx,option_mask,ntree_limit,training,pred_len,cpred)
  if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
  ! Link to fortran pointer pred 
  call c_f_pointer(cpred, pred, [pred_len])
  write(*,*) 'Prediction with all ones: ',pred
+
+ ! New prediction interface - does not yet work
+! allocate(oshape(2))
+! out_shape = c_loc(oshape)
+! json_config = 'config/config.json'
+! rc = XGBoosterPredictFromDMatrix_f(bst,dmtrx,json_config,out_shape,pred_len,cpred)
+! if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
+ ! Link to fortran pointer pred 
+! call c_f_pointer(cpred, pred, [pred_len])
+! write(*,*) 'Prediction with new interface, using all ones: ',pred
 
 !--- Additional example code for DMatrix 
  if ( fulltest ) then
@@ -109,7 +130,7 @@ program xgboost_test
     rc = XGDMatrixCreateFromFile_f(fname, silent, dmtrx)
     if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
     ! 3. Make prediction with this matrix - should give same result as above 
-    rc = XGBoosterPredict_f(bst,dmtrx,option_mask,ntree_limit,pred_len,cpred)
+    rc = XGBoosterPredict_f(bst,dmtrx,option_mask,ntree_limit,training,pred_len,cpred)
     if(debug) write(*,*) __FILE__,__LINE__,'Return code: ',rc
     call c_f_pointer(cpred, pred, [pred_len])
     write(*,*) 'Prediction with data from file: ',pred
@@ -120,6 +141,7 @@ program xgboost_test
  if(debug) write(*,*) __FILE__,__LINE__,'Model freed, return code: ',rc
  if (allocated (carr) ) deallocate(carr)
  if (associated(pred) ) nullify(pred)
+ deallocate(targ)
  write(*,*) 'All done'
 
 end program

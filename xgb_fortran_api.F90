@@ -49,15 +49,29 @@ interface
 end interface
 
 interface
-  integer(c_int) function XGBoosterPredict_f(handle, dmat, option_mask, ntree_limit, length, prediction) &
+  integer(c_int) function XGBoosterPredict_f(handle, dmat, option_mask, ntree_limit, training, length, prediction) &
         bind(C, name="XGBoosterPredict")
    use iso_c_binding, only: c_int, c_ptr, c_int64_t, c_float, c_double
    type(c_ptr), value        :: handle       ! BoosterHandle
    type(c_ptr), value        :: dmat         ! DMatrixHandle
    integer(c_int), value     :: option_mask  ! option mask
    integer(c_int), value     :: ntree_limit  ! limit number of trees in the prediction
+   integer(c_int), value     :: training     ! training 
    integer(c_int64_t)        :: length       ! length of prediction
    type(c_ptr)               :: prediction   ! prediction
+  end function
+end interface
+
+interface
+  integer(c_int) function XGBoosterPredictFromDMatrix_c(handle, dmat, c_json_config, out_shape, out_dim, prediction) &
+        bind(C, name="XGBoosterPredictFromDMatrix")
+   use iso_c_binding, only: c_int, c_char, c_ptr, c_int64_t, c_float, c_double
+   type(c_ptr), value                          :: handle       ! BoosterHandle
+   type(c_ptr), value                          :: dmat         ! DMatrixHandle
+   character(len=1, kind=c_char), dimension(*) :: c_json_config
+   type(c_ptr)                                 :: out_shape    ! length of prediction
+   integer(c_int64_t)                          :: out_dim      ! length of prediction
+   type(c_ptr)                                 :: prediction   ! prediction
   end function
 end interface
 
@@ -149,6 +163,21 @@ contains
    ! starts here
    cname = trim(fname)//c_null_char
    rc = XGDMatrixCreateFromFile_c(cname, silent, handle)
+  end function
+
+  integer(kind=c_int) function XGBoosterPredictFromDMatrix_f(handle, dmat, c_json_config, out_shape, out_dim, prediction) result(rc)
+   use iso_c_binding, only: c_int, c_char, c_ptr, c_int64_t, c_float, c_double
+   type(c_ptr), value                          :: handle       ! BoosterHandle
+   type(c_ptr), value                          :: dmat         ! DMatrixHandle
+   character(len=*)                            :: c_json_config 
+   type(c_ptr)                                 :: out_shape
+   integer(c_int64_t)                          :: out_dim
+   type(c_ptr)                                 :: prediction   ! prediction
+   ! local variable
+   character(len=:),allocatable :: cname
+   ! starts here
+   cname = trim(c_json_config)//c_null_char
+   rc = XGBoosterPredictFromDMatrix_c(handle, dmat, cname, out_shape, out_dim, prediction)
   end function
 
 end module

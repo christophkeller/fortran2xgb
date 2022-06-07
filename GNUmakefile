@@ -3,11 +3,12 @@
 .PHONY:
 	all clean veryclean
 
-#FC = ifort
-FC = gfortran
+FC = ifort
+#FC = gfortran
 #FC = nagfor
 
-XGBOOST_LIBDIR = ./xgboost/lib
+#XGBOOST_LIBDIR = ./xgboost/lib
+XGBOOST_LIBDIR = /discover/swdev/gmao_SIteam/Baselibs/TmpBaselibs/ESMA-Baselibs-6.2.14-TEST/x86_64-pc-linux-gnu/ifort_2021.3.0-intelmpi_2021.3.0/Linux/lib64
 
 INCDIR = include
 
@@ -23,8 +24,8 @@ xgboost_test.o: xgboost_test.F90 xgb_fortran_api.o
 
 xgb_fortran_api.o: xgb_fortran_api.F90
 
-#FOPTS = -g -traceback
-FOPTS = -g -fbacktrace
+FOPTS = -g -traceback
+#FOPTS = -g -fbacktrace
 #FOPTS = -g -C=all
 
 .f90.o:
