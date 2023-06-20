@@ -1,3 +1,6 @@
+# Note: stale repository
+This repository is not activetly maintained. The XGBoost - Fortran API has been integrated into the [GEOS QuickChem module](https://github.com/GEOS-ESM/QuickChem). See the [corresponding F90 file](https://github.com/GEOS-ESM/QuickChem/blob/main/Shared/xgb_fortran_api.F90) for a more recent version.
+
 # fortran2xgb
 Fortran API for XGBoost
 
